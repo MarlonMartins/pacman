@@ -4,6 +4,7 @@ YELLOW = (255, 255, 0)
 BLACK = (0, 0, 0)
 WIDTH = 800
 HEIGHT = 600
+SPEED = 1
 
 pygame.init()
 
@@ -17,8 +18,8 @@ class Pacman:
         self.center_x = 400
         self.center_y = 300
         self.size = WIDTH // 30
-        self.speed_x = 1
-        self.speed_y = 1
+        self.speed_x = 0
+        self.speed_y = 0
 
         self.radius = int(self.size / 2)
 
@@ -27,18 +28,6 @@ class Pacman:
         self.row = self.row + self.speed_y
         self.center_x = int(self.column * self.size + self.radius)
         self.center_y = int(self.row * self.size + self.radius)
-
-        if self.center_x + self.radius > WIDTH:
-            self.speed_x = -1
-
-        if self.center_x - self.radius < 0:
-            self.speed_x = 1
-
-        if self.center_y + self.radius > HEIGHT:
-            self.speed_y = -1
-
-        if self.center_y - self.radius < 0:
-            self.speed_y = 1
 
     def paint(self, screen):
         if self.speed_x == -1:
@@ -61,8 +50,29 @@ class Pacman:
             int(self.center_x + self.radius / 3),
             int(self.center_y - self.radius * 0.70),
         )
-        eye_radius = int(self.radius / 10)
+        eye_radius = int(self.radius / 8)
         pygame.draw.circle(screen, BLACK, eye, eye_radius, 0)
+
+    def process_events(self, events):
+        for event in events:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RIGHT:
+                    self.speed_x = SPEED
+                elif event.key == pygame.K_LEFT:
+                    self.speed_x = -SPEED
+                elif event.key == pygame.K_UP:
+                    self.speed_y = -SPEED
+                elif event.key == pygame.K_DOWN:
+                    self.speed_y = SPEED
+            elif event.type == pygame.KEYUP:
+                if event.key == pygame.K_RIGHT:
+                    self.speed_x = 0
+                elif event.key == pygame.K_LEFT:
+                    self.speed_x = 0
+                elif event.key == pygame.K_UP:
+                    self.speed_y = 0
+                elif event.key == pygame.K_DOWN:
+                    self.speed_y = 0
 
 
 if __name__ == "__main__":
@@ -76,6 +86,8 @@ if __name__ == "__main__":
         pygame.display.update()
         pygame.time.delay(100)
 
-        for event in pygame.event.get():
+        events = pygame.event.get()
+        for event in events:
             if event.type == pygame.QUIT:
                 pygame.quit()
+        pacman.process_events(events)
