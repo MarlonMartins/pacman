@@ -6,18 +6,25 @@ pygame.init()
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT), 0)
 
+font = pygame.font.SysFont("arial", 32, True, False)
+
 
 class Scenery:
     def __init__(self, size, pacman):
         self.pacman = pacman
         self.size = size
-        self.pontos = 0
+        self.points = 0
         self.matrix = MAZE
 
     def check_color(self, column):
         if column == 2:
             return BLUE
         return BLACK
+
+    def paint_points(self, screen):
+        points_x = 30 * self.size
+        img_points = font.render(f"Score: {self.points}", True, YELLOW)
+        screen.blit(img_points, (points_x, 50))
 
     def paint_row(self, screen, row_number, row):
         for column_number, column in enumerate(row):
@@ -38,6 +45,7 @@ class Scenery:
     def paint(self, screen):
         for row_number, row in enumerate(self.matrix):
             self.paint_row(screen, row_number, row)
+        self.paint_points(screen)
 
     def calculate_rules(self):
         column = self.pacman.desired_mov_column
@@ -47,9 +55,8 @@ class Scenery:
             if self.matrix[row][column] != 2:
                 self.pacman.accept_movement()
                 if self.matrix[row][column] == 1:
-                    self.pontos += 1
+                    self.points += 1
                     self.matrix[row][column] = 0
-                    print(self.pontos)
 
 
 class Pacman:
