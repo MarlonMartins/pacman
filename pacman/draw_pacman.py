@@ -6,10 +6,13 @@ import pygame
 from variables import (
     BLACK,
     BLUE,
+    CYAN,
     DOWN,
     HEIGHT,
     LEFT,
     MAZE,
+    ORANGE,
+    PINK,
     RED,
     RIGHT,
     SPEED,
@@ -40,13 +43,33 @@ class GameElement(metaclass=ABCMeta):
         pass
 
 
+class Movable(metaclass=ABCMeta):
+    @abstractmethod
+    def accept_movement(self):
+        pass
+
+    @abstractmethod
+    def refuse_movement(self, directions):
+        pass
+
+    @abstractmethod
+    def corner(self, directions):
+        pass
+
+
 class Scenery(GameElement):
-    def __init__(self, size, pacman, ghost):
+    def __init__(self, size, pacman):
         self.pacman = pacman
-        self.ghost = ghost
+        self.movables = []
         self.size = size
         self.points = 0
         self.matrix = MAZE
+
+    def add_points(self):
+        self.points += 1
+
+    def add_movable(self, obj):
+        self.movables.append(obj)
 
     def check_color(self, column):
         if column == 2:
@@ -93,26 +116,27 @@ class Scenery(GameElement):
         return directions
 
     def calculate_rules(self):
-        directions = self.get_directions(self.ghost.row, self.ghost.column)
-        if len(directions) >= 3:
-            self.ghost.corner(directions)
-        column = self.pacman.desired_mov_column
-        row = self.pacman.desired_mov_row
+        for element in self.movables:
+            row = int(element.row)
+            col = int(element.column)
+            desired_mov_col = int(element.desired_mov_column)
+            desired_mov_row = int(element.desired_mov_row)
+            directions = self.get_directions(row, col)
 
-        if 0 <= column <= 27 and 0 <= row < 29:
-            if self.matrix[row][column] != 2:
-                self.pacman.accept_movement()
-                if self.matrix[row][column] == 1:
-                    self.points += 1
-                    self.matrix[row][column] = 0
+            if len(directions) >= 3:
+                element.corner(directions)
 
-        col = int(self.ghost.desired_mov_column)
-        row = int(self.ghost.desired_mov_row)
-
-        if 0 <= col < 28 and 0 <= row < 29 and self.matrix[row][col] != 2:
-            self.ghost.accept_movement()
-        else:
-            self.ghost.refuse_movement(directions)
+            if (
+                0 <= desired_mov_row < 29
+                and 0 <= desired_mov_col < 28
+                and self.matrix[desired_mov_row][desired_mov_col] != 2
+            ):
+                element.accept_movement()
+                if isinstance(element, Pacman) and self.matrix[row][col] == 1:
+                    self.add_points()
+                    self.matrix[row][col] = 0
+            else:
+                element.refuse_movement(directions)
 
     def process_events(self, events):
         for event in events:
@@ -120,7 +144,7 @@ class Scenery(GameElement):
                 exit()
 
 
-class Pacman(GameElement):
+class Pacman(GameElement, Movable):
     def __init__(self, size):
         self.column = 1
         self.row = 1
@@ -191,6 +215,13 @@ class Pacman(GameElement):
     def accept_movement(self):
         self.row = self.desired_mov_row
         self.column = self.desired_mov_column
+
+    def refuse_movement(self, directions):
+        self.desired_mov_row = self.row
+        self.desired_mov_column = self.desired_mov_column
+
+    def corner(self, directions):
+        pass
 
 
 class Ghost(GameElement):
@@ -276,16 +307,32 @@ if __name__ == "__main__":
     size = HEIGHT // 30
     pacman = Pacman(size)
     blinky = Ghost(size, RED)
-    scenery = Scenery(size, pacman, blinky)
+    inky = Ghost(size, CYAN)
+    clyde = Ghost(size, ORANGE)
+    pinky = Ghost(size, PINK)
+    scenery = Scenery(size, pacman)
+    scenery.add_movable(pacman)
+    scenery.add_movable(blinky)
+    scenery.add_movable(inky)
+    scenery.add_movable(clyde)
+    scenery.add_movable(pinky)
 
     while True:
         pacman.calculate_rules()
         blinky.calculate_rules()
+        inky.calculate_rules()
+        clyde.calculate_rules()
+        pinky.calculate_rules()
         scenery.calculate_rules()
+
         screen.fill(BLACK)
         scenery.paint(screen)
         pacman.paint(screen)
         blinky.paint(screen)
+        inky.paint(screen)
+        clyde.paint(screen)
+        pinky.paint(screen)
+
         pygame.display.update()
         pygame.time.delay(100)
 
