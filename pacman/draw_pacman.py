@@ -1,3 +1,4 @@
+import random
 from abc import ABCMeta, abstractmethod
 
 import pygame
@@ -5,10 +6,14 @@ import pygame
 from variables import (
     BLACK,
     BLUE,
+    DOWN,
     HEIGHT,
+    LEFT,
     MAZE,
     RED,
+    RIGHT,
     SPEED,
+    UP,
     WHITE,
     WIDTH,
     YELLOW,
@@ -36,8 +41,9 @@ class GameElement(metaclass=ABCMeta):
 
 
 class Scenery(GameElement):
-    def __init__(self, size, pacman):
+    def __init__(self, size, pacman, ghost):
         self.pacman = pacman
+        self.ghost = ghost
         self.size = size
         self.points = 0
         self.matrix = MAZE
@@ -73,7 +79,23 @@ class Scenery(GameElement):
             self.paint_row(screen, row_number, row)
         self.paint_points(screen)
 
+    def get_directions(self, row, column):
+        directions = []
+        if self.matrix[int(row - 1)][int(column)] != 2:
+            directions.append(UP)
+        if self.matrix[int(row + 1)][int(column)] != 2:
+            directions.append(DOWN)
+        if self.matrix[int(row)][int(column - 1)] != 2:
+            directions.append(LEFT)
+        if self.matrix[int(row)][int(column + 1)] != 2:
+            directions.append(RIGHT)
+
+        return directions
+
     def calculate_rules(self):
+        directions = self.get_directions(self.ghost.row, self.ghost.column)
+        if len(directions) >= 3:
+            self.ghost.corner(directions)
         column = self.pacman.desired_mov_column
         row = self.pacman.desired_mov_row
 
@@ -83,6 +105,14 @@ class Scenery(GameElement):
                 if self.matrix[row][column] == 1:
                     self.points += 1
                     self.matrix[row][column] = 0
+
+        col = int(self.ghost.desired_mov_column)
+        row = int(self.ghost.desired_mov_row)
+
+        if 0 <= col < 28 and 0 <= row < 29 and self.matrix[row][col] != 2:
+            self.ghost.accept_movement()
+        else:
+            self.ghost.refuse_movement(directions)
 
     def process_events(self, events):
         for event in events:
@@ -167,8 +197,12 @@ class Ghost(GameElement):
     def __init__(self, size, color):
         self.column = 6.0
         self.row = 8.0
+        self.speed = 1
+        self.direction = 0
         self.size = size
         self.color = color
+        self.desired_mov_column = self.column
+        self.desired_mov_row = self.row
 
     def paint(self, screen):
         slice = self.size // 8
@@ -210,7 +244,29 @@ class Ghost(GameElement):
         )
 
     def calculate_rules(self):
-        pass
+        if self.direction == UP:
+            self.desired_mov_row -= self.speed
+        elif self.direction == DOWN:
+            self.desired_mov_row += self.speed
+        elif self.direction == LEFT:
+            self.desired_mov_column -= self.speed
+        elif self.direction == RIGHT:
+            self.desired_mov_column += self.speed
+
+    def change_direction(self, directions):
+        self.direction = random.choice(directions)
+
+    def corner(self, directions):
+        self.change_direction(directions)
+
+    def accept_movement(self):
+        self.row = self.desired_mov_row
+        self.column = self.desired_mov_column
+
+    def refuse_movement(self, directions):
+        self.desired_mov_row = self.row
+        self.desired_mov_column = self.column
+        self.change_direction(directions)
 
     def process_events(self, events):
         pass
@@ -220,10 +276,11 @@ if __name__ == "__main__":
     size = HEIGHT // 30
     pacman = Pacman(size)
     blinky = Ghost(size, RED)
-    scenery = Scenery(size, pacman)
+    scenery = Scenery(size, pacman, blinky)
 
     while True:
         pacman.calculate_rules()
+        blinky.calculate_rules()
         scenery.calculate_rules()
         screen.fill(BLACK)
         scenery.paint(screen)
