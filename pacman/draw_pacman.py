@@ -66,7 +66,7 @@ class Scenery(GameElement):
         self.matrix = MAZE
         self.state = "PLAYING"
         self.total_points = self.calculate_total_points()
-        print(self.total_points)
+        self.lives = 5
 
     def calculate_total_points(self):
         points = 0
@@ -89,6 +89,11 @@ class Scenery(GameElement):
         points_x = 30 * self.size
         img_points = font.render(f"Score: {self.points}", True, YELLOW)
         screen.blit(img_points, (points_x, 50))
+
+    def paint_lives(self, screen):
+        points_x = 30 * self.size
+        img_points = font.render(f"Lives: {self.lives}", True, YELLOW)
+        screen.blit(img_points, (points_x, 100))
 
     def paint_row(self, screen, row_number, row):
         for column_number, column in enumerate(row):
@@ -141,6 +146,7 @@ class Scenery(GameElement):
         for row_number, row in enumerate(self.matrix):
             self.paint_row(screen, row_number, row)
         self.paint_points(screen)
+        self.paint_lives(screen)
 
     def get_directions(self, row, column):
         directions = []
@@ -190,7 +196,11 @@ class Scenery(GameElement):
                 and element.row == self.pacman.row
                 and element.column == self.pacman.column
             ):
-                self.state = "GAME_OVER"
+                self.lives -= 1
+                if self.lives <= 0:
+                    self.state = "GAME_OVER"
+                else:
+                    self.pacman.reset_position()
             else:
                 if (
                     0 <= desired_mov_row < 29
@@ -235,6 +245,8 @@ class Pacman(GameElement, Movable):
         self.radius = int(self.size / 2)
         self.desired_mov_column = self.column
         self.desired_mov_row = self.row
+        self.mouth_opening = 0
+        self.speed_opening = 3
 
     def calculate_rules(self):
         self.desired_mov_column = self.column + self.speed_x
@@ -250,12 +262,22 @@ class Pacman(GameElement, Movable):
         pygame.draw.circle(
             screen, YELLOW, (self.center_x, self.center_y), self.radius
         )
+        self.mouth_opening += self.speed_opening
+        if self.mouth_opening > self.radius:
+            self.speed_opening *= -1
+
+        if self.mouth_opening <= 0:
+            self.speed_opening *= -1
+
         mouth_corner = (self.center_x, self.center_y)
         upper_lip = (
             self.center_x + direction * self.radius,
-            self.center_y - self.radius,
+            self.center_y - self.mouth_opening,
         )
-        lower_lip = (self.center_x + direction * self.radius, self.center_y)
+        lower_lip = (
+            self.center_x + direction * self.radius,
+            self.center_y + self.mouth_opening,
+        )
         points = [mouth_corner, upper_lip, lower_lip]
         pygame.draw.polygon(screen, BLACK, points, 0)
 
@@ -301,6 +323,10 @@ class Pacman(GameElement, Movable):
 
     def corner(self, directions):
         pass
+
+    def reset_position(self):
+        self.column = 1
+        self.row = 1
 
 
 class Ghost(GameElement):
