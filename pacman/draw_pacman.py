@@ -64,6 +64,15 @@ class Scenery(GameElement):
         self.size = size
         self.points = 0
         self.matrix = MAZE
+        self.state = "PLAYING"
+        self.total_points = self.calculate_total_points()
+        print(self.total_points)
+
+    def calculate_total_points(self):
+        points = 0
+        for row in MAZE:
+            points += row.count(1)
+        return points
 
     def add_points(self):
         self.points += 1
@@ -98,6 +107,37 @@ class Scenery(GameElement):
                 )
 
     def paint(self, screen):
+        if self.state == "PLAYING":
+            self.paint_while_playing(screen)
+        elif self.state == "PAUSED":
+            self.paint_while_playing(screen)
+            self.paint_while_paused(screen)
+        elif self.state == "GAME_OVER":
+            self.paint_while_playing(screen)
+            self.paint_game_over(screen)
+        elif self.state == "VICTORY":
+            self.paint_while_playing(screen)
+            self.paint_victory(screen)
+
+    def paint_centered_text(self, screen, text, color):
+        text_img = font.render(text, True, color, BLACK)
+        text_x = (screen.get_width() - text_img.get_width()) // 2
+        text_y = (screen.get_height() - text_img.get_height()) // 2
+        screen.blit(text_img, (text_x, text_y))
+
+    def paint_victory(self, screen):
+        text = "Y O U  W I N !"
+        self.paint_centered_text(screen, text, YELLOW)
+
+    def paint_game_over(self, screen):
+        text = "G A M E   O V E R"
+        self.paint_centered_text(screen, text, RED)
+
+    def paint_while_paused(self, screen):
+        text = "P A U S E D"
+        self.paint_centered_text(screen, text, YELLOW)
+
+    def paint_while_playing(self, screen):
         for row_number, row in enumerate(self.matrix):
             self.paint_row(screen, row_number, row)
         self.paint_points(screen)
@@ -116,6 +156,25 @@ class Scenery(GameElement):
         return directions
 
     def calculate_rules(self):
+        if self.state == "PLAYING":
+            self.calculate_rules_while_playing()
+        elif self.state == "PAUSED":
+            self.calculate_rules_while_paused()
+        elif self.state == "GAME_OVER":
+            self.calculate_rules_game_over()
+        elif self.state == "VICTORY":
+            self.calculate_rules_victory()
+
+    def calculate_rules_victory(self):
+        pass
+
+    def calculate_rules_game_over(self):
+        pass
+
+    def calculate_rules_while_paused(self):
+        pass
+
+    def calculate_rules_while_playing(self):
         for element in self.movables:
             row = int(element.row)
             col = int(element.column)
@@ -127,21 +186,41 @@ class Scenery(GameElement):
                 element.corner(directions)
 
             if (
-                0 <= desired_mov_row < 29
-                and 0 <= desired_mov_col < 28
-                and self.matrix[desired_mov_row][desired_mov_col] != 2
+                isinstance(element, Ghost)
+                and element.row == self.pacman.row
+                and element.column == self.pacman.column
             ):
-                element.accept_movement()
-                if isinstance(element, Pacman) and self.matrix[row][col] == 1:
-                    self.add_points()
-                    self.matrix[row][col] = 0
+                self.state = "GAME_OVER"
             else:
-                element.refuse_movement(directions)
+                if (
+                    0 <= desired_mov_row < 29
+                    and 0 <= desired_mov_col < 28
+                    and self.matrix[desired_mov_row][desired_mov_col] != 2
+                ):
+                    element.accept_movement()
+                    if (
+                        isinstance(element, Pacman)
+                        and self.matrix[row][col] == 1
+                    ):
+                        self.add_points()
+                        self.matrix[row][col] = 0
+
+                        if self.points >= self.total_points:
+                            self.state = "VICTORY"
+                else:
+                    element.refuse_movement(directions)
+
+    def change_state(self):
+        states = {"PLAYING": "PAUSED", "PAUSED": "PLAYING"}
+        self.state = states.get(self.state)
 
     def process_events(self, events):
         for event in events:
             if event.type == pygame.QUIT:
                 exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_p:
+                    self.change_state()
 
 
 class Pacman(GameElement, Movable):
@@ -226,8 +305,8 @@ class Pacman(GameElement, Movable):
 
 class Ghost(GameElement):
     def __init__(self, size, color):
-        self.column = 6.0
-        self.row = 8.0
+        self.column = 13
+        self.row = 15
         self.speed = 1
         self.direction = 0
         self.size = size
